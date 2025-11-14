@@ -44,7 +44,7 @@ class App:
             if ok:
                 st.session_state.logged_in = True
                 st.session_state.username = uname.strip()
-                st.experimental_rerun()
+                st.rerun()
             else:
                 st.error(msg or 'Invalid credentials')
         st.markdown('</div></div>', unsafe_allow_html=True)
@@ -63,7 +63,7 @@ class App:
             if st.button('Logout'):
                 st.session_state.logged_in = False
                 st.session_state.username = None
-                st.experimental_rerun()
+                st.rerun()
 
         if page == 'Home':
             HomePage(self).run()
