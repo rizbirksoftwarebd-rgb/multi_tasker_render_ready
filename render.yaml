@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: multi-tasker-streamlit
+    env: python
+    plan: free
+    buildCommand: pip install --upgrade pip && pip install --only-binary=:all: -r requirements.txt --timeout 120 --retries 5
+    startCommand: streamlit run main.py --server.port $PORT
