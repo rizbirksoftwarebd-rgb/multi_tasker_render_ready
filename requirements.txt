@@ -1,4 +1,4 @@
-streamlit==1.26.0
+streamlit
 Pillow==11.1.0
 SQLAlchemy==2.0.21
 psycopg[binary]==3.2.1
