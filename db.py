@@ -1,18 +1,56 @@
 from ensure_db import get_engine, users, permissions
-from sqlalchemy import select, insert, update, delete
+from sqlalchemy import select, insert, update
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy import text
 
 engine = get_engine()
 
 def add_or_update_user(username, algorithm, iterations, salt, hashhex, role="user", active=1):
-    stmt = insert(users).values(username=username, algorithm=algorithm, iterations=iterations, salt=salt, hash=hashhex, role=role, active=active)
-    # ON CONFLICT... behavior: use text for cross-backend compatibility
-    upsert = stmt.on_conflict_do_update(index_elements=[users.c.username],
-                                        set_=dict(algorithm=algorithm, iterations=iterations, salt=salt, hash=hashhex, role=role, active=active))
-    with engine.connect() as conn:
-        conn.execute(upsert)
-        conn.commit()
+    """
+    Upsert user safely.
+    - For PostgreSQL: use on_conflict_do_update
+    - For SQLite or other backends: use merge() fallback
+    """
+    try:
+        # Detect backend
+        backend = engine.url.get_backend_name()
+        if backend == "postgresql":
+            stmt = pg_insert(users).values(
+                username=username,
+                algorithm=algorithm,
+                iterations=iterations,
+                salt=salt,
+                hash=hashhex,
+                role=role,
+                active=active
+            ).on_conflict_do_update(
+                index_elements=[users.c.username],
+                set_={
+                    "algorithm": algorithm,
+                    "iterations": iterations,
+                    "salt": salt,
+                    "hash": hashhex,
+                    "role": role,
+                    "active": active
+                }
+            )
+        else:
+            # Fallback for SQLite: merge
+            stmt = users.merge().values(
+                username=username,
+                algorithm=algorithm,
+                iterations=iterations,
+                salt=salt,
+                hash=hashhex,
+                role=role,
+                active=active
+            )
+
+        with engine.begin() as conn:
+            conn.execute(stmt)
+    except SQLAlchemyError as e:
+        print("DB Error:", e)
+        raise e
 
 def get_user(username):
     stmt = select(users).where(users.c.username == username)
@@ -27,7 +65,6 @@ def list_users():
         return [dict(r) for r in rows]
 
 def deactivate_user(username):
-    stmt = update(users).where(users.c.username==username).values(active=0)
-    with engine.connect() as conn:
+    stmt = update(users).where(users.c.username == username).values(active=0)
+    with engine.begin() as conn:
         conn.execute(stmt)
-        conn.commit()
