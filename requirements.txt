@@ -1,5 +1,5 @@
 streamlit
 Pillow==11.1.0
-SQLAlchemy==2.0.21
+SQLAlchemy
 psycopg[binary]
 pytest
