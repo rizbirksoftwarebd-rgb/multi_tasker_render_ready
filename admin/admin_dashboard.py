@@ -16,11 +16,17 @@ def hash_password(password: str, salt: bytes=None, iterations: int=200_000):
     }
 
 def valid_password(p):
-    if len(p) < 8: return False, "Minimum 8 characters required"
-    if not re.search(r"[A-Z]", p): return False, "At least one uppercase letter required"
-    if not re.search(r"[a-z]", p): return False, "At least one lowercase letter required"
-    if not re.search(r"[0-9]", p): return False, "At least one digit required"
-    if not re.search(r"[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]", p): return False, "At least one special character required"
+    if len(p) < 8:
+        return False, "Minimum 8 characters required"
+    if not re.search(r"[A-Z]", p):
+        return False, "At least one uppercase letter required"
+    if not re.search(r"[a-z]", p):
+        return False, "At least one lowercase letter required"
+    if not re.search(r"[0-9]", p):
+        return False, "At least one digit required"
+    # FIXED REGEX – safe quoting (no SyntaxError now)
+    if not re.search(r'[!@#$%^&*()_+\-=\[\]{};\':"\\|,.<>\/?]', p):
+        return False, "At least one special character required"
     return True, ""
 
 class AdminDashboard:
@@ -30,36 +36,52 @@ class AdminDashboard:
 
     def run(self):
         st.title("Admin Dashboard")
-        tabs = st.tabs(["Users","Permissions","System"])
+
+        tabs = st.tabs(["Users", "Permissions", "System"])
+
+        # ---------------- USERS TAB ----------------
         with tabs[0]:
             st.subheader("Users")
             users = list_users()
+
             for u in users:
-                cols = st.columns([2,1,1])
+                cols = st.columns([2, 1, 1])
                 cols[0].write(u['username'])
                 cols[1].write(u['role'])
+
                 if cols[2].button(f"Deactivate##{u['username']}"):
                     deactivate_user(u['username'])
                     st.experimental_rerun()
+
             st.markdown('---')
             st.subheader("Create user")
+
             with st.form('create'):
                 username = st.text_input("Username")
                 password = st.text_input("Password", type='password')
-                role = st.selectbox("Role", ["user","admin"])
+                role = st.selectbox("Role", ["user", "admin"])
                 submitted = st.form_submit_button("Create / Update")
+
                 if submitted:
                     ok, msg = valid_password(password)
                     if not ok:
                         st.error(msg)
                     else:
                         h = hash_password(password)
-                        add_or_update_user(username, h['algorithm'], h['iterations'], h['salt'], h['hash'], role)
+                        add_or_update_user(
+                            username,
+                            h['algorithm'], h['iterations'], h['salt'], h['hash'],
+                            role
+                        )
                         st.success("User created/updated")
+
+        # ---------------- PERMISSIONS TAB ----------------
         with tabs[1]:
             st.subheader("Permissions (simple)")
             st.write("Page permissions feature placeholder — extend as needed.")
             st.write("You can later implement fine-grained permissions here.")
+
+        # ---------------- SYSTEM TAB ----------------
         with tabs[2]:
             st.subheader("System")
             st.write(f"Database URL (detected): {DATABASE_URL}")
